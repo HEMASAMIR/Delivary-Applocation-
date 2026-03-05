@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "1042764582320",
+    "firebase_url": "https://zerocore-c3e24-default-rtdb.firebaseio.com",
+    "project_id": "zerocore-c3e24",
+    "storage_bucket": "zerocore-c3e24.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1042764582320:android:9c353b4e55d4f73a1ada75",
+        "android_client_info": {
+          "package_name": "com.example.myapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDwN1C6Iiw1OyBkbpQnqonOXMQ9YKCbCiY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
