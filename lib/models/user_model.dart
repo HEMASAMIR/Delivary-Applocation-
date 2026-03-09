@@ -1,7 +1,7 @@
 class UserModel {
   final String id;
   final String phone;
-  final String? fullName;
+  String? fullName;
   final String role;
   final String? vehicleType;
 

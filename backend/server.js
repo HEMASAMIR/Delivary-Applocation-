@@ -60,7 +60,15 @@ checkConnection();
 
 // 3. ربط المسارات
 // ملاحظة: تأكد أن تطبيق Flutter ينادي /api/auth وليس /api/user
-app.use('/api/auth', authRoutes); 
+// --- حط الكود ده هنا عشان نراقب الطلبات ---
+app.use((req, res, next) => {
+    console.log(`📌 جالي طلب جديد: [${req.method}] ${req.url}`);
+    console.log(`📦 الـ Body اللي واصل:`, req.body);
+    next();
+});
+
+// 3. ربط المسارات (ده موجود عندك أصلاً)
+app.use('/api/auth', authRoutes);
 app.use('/api/orders', ordersRoutes);
 app.use('/api/drivers', driversRoutes);
 

@@ -179,25 +179,42 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text('أهلاً ${widget.user.fullName}',
-            style: const TextStyle(
-                color: Colors.black, fontWeight: FontWeight.bold)),
+        title: Text(
+          'أهلاً ${widget.user.fullName}',
+          style: const TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         backgroundColor: Colors.white.withOpacity(0.9),
         elevation: 0,
         centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.person_outline_rounded, color: Colors.black),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => const EditProfileScreen()),
-            ),
+            onPressed: () async {
+              final updatedData = await Navigator.push<Map<String, String>>(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const EditProfileScreen()),
+              );
+
+              if (updatedData != null && mounted) {
+                setState(() {
+                  widget.user.fullName = updatedData['fullName'];
+                  // لو تحب تحدث العنوان:
+                  // widget.user.address = updatedData['address'];
+                });
+              }
+            },
           ),
           Padding(
             padding: const EdgeInsets.only(right: 15),
-            child: Icon(Icons.circle,
-                color: isConnected ? Colors.green : Colors.red, size: 10),
+            child: Icon(
+              Icons.circle,
+              color: isConnected ? Colors.green : Colors.red,
+              size: 10,
+            ),
           ),
         ],
       ),
@@ -220,7 +237,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                   fontSize: 18)),
-          icon: const Icon(Icons.local_gas_station, color: Colors.white),
+          icon: const Icon(Icons.local_gas_station,
+              color: Color.fromARGB(255, 0, 0, 0)),
           backgroundColor: Colors.black,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

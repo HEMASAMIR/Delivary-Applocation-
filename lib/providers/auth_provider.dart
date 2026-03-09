@@ -11,26 +11,25 @@ class AuthProvider extends ChangeNotifier {
 
   bool get isLoggedIn => token != null;
 
-  // دالة لجلب الـ ID الخاص بالمستخدم الحالي
-  String? get currentUserId => user != null ? user!['id'].toString() : null;
-
   // --- محاولة تسجيل الدخول التلقائي ---
   Future<bool> tryAutoLogin() async {
     final prefs = await SharedPreferences.getInstance();
     if (!prefs.containsKey('token')) return false;
 
     token = prefs.getString('token');
+
     if (prefs.containsKey('user_data')) {
       final String? userDataString = prefs.getString('user_data');
       if (userDataString != null) {
         user = jsonDecode(userDataString);
       }
     }
+
     notifyListeners();
     return true;
   }
 
-  // --- تحديث الملف الشخصي (الإصدار المعتمد) ---
+  // --- تحديث الملف الشخصي ---
   Future<bool> updateProfile({
     required String name,
     required String address,
@@ -38,63 +37,50 @@ class AuthProvider extends ChangeNotifier {
     File? image,
   }) async {
     try {
-      // ⚠️ تأكد أن ApiConfig.updateProfile يشير إلى /api/auth/update-profile
-      final uri = Uri.parse(ApiConfig.updateProfile);
-      final request = http.MultipartRequest('POST', uri);
+      var uri = Uri.parse(ApiConfig.updateProfile);
 
-      // إضافة الهيدرز
+      var request = http.MultipartRequest('POST', uri);
+
       request.headers.addAll({
         'Authorization': 'Bearer $token',
         'Accept': 'application/json',
       });
 
-      // 🔥 التعديل الجوهري: إرسال الـ userId للسيرفر
-      if (currentUserId != null) {
-        request.fields['userId'] = currentUserId!;
-      }
-
-      // إضافة البيانات النصية
       request.fields['name'] = name;
       request.fields['address'] = address;
+      request.fields['userId'] = user!['id'].toString();
 
       if (password != null && password.isNotEmpty) {
         request.fields['password'] = password;
       }
 
-      // إضافة الصورة
       if (image != null) {
-        request.files.add(await http.MultipartFile.fromPath(
-          'image', // يطابق upload.single('image') في السيرفر
-          image.path,
-        ));
+        request.files.add(
+          await http.MultipartFile.fromPath('image', image.path),
+        );
       }
 
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
 
-      debugPrint('Connecting to: ${uri.toString()}');
-      debugPrint('Status Code: ${response.statusCode}');
+      print("STATUS CODE: ${response.statusCode}");
+      print("RESPONSE BODY: ${response.body}");
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
 
-        if (data['user'] != null) {
-          // تحديث بيانات المستخدم في الـ Provider
-          user = data['user'];
+        user = responseData['user'];
 
-          // حفظ البيانات الجديدة في الهاتف
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('user_data', jsonEncode(user));
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user_data', jsonEncode(user));
 
-          notifyListeners();
-        }
+        notifyListeners();
         return true;
-      } else {
-        debugPrint("Update Failed: ${response.body}");
-        return false;
       }
+
+      return false;
     } catch (e) {
-      debugPrint('Error updating profile: $e');
+      print("Update Profile Error: $e");
       return false;
     }
   }
@@ -102,6 +88,7 @@ class AuthProvider extends ChangeNotifier {
   // --- تسجيل الدخول ---
   Future<void> login(String phone, String password) async {
     const url = ApiConfig.login;
+
     try {
       final response = await http.post(
         Uri.parse(url),
@@ -109,7 +96,10 @@ class AuthProvider extends ChangeNotifier {
           "Content-Type": "application/json",
           "Accept": "application/json"
         },
-        body: jsonEncode({"phone": phone, "password": password}),
+        body: jsonEncode({
+          "phone": phone,
+          "password": password,
+        }),
       );
 
       final data = jsonDecode(response.body);
@@ -135,8 +125,10 @@ class AuthProvider extends ChangeNotifier {
   Future<void> logout() async {
     token = null;
     user = null;
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
+
     notifyListeners();
   }
 }
