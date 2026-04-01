@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'theme/app_theme.dart';
 import 'providers/auth_provider.dart';
@@ -10,58 +8,40 @@ import 'providers/socket_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/user/customer_home_screen.dart';
 import 'screens/provider/dashboard_screen.dart';
-import 'services/notification_service.dart';
 import 'models/user_model.dart';
 
-// معالج الإشعارات في الخلفية
-@pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // يجب عمل Initialize لـ Firebase داخل معالج الخلفية
-  await Firebase.initializeApp();
-  debugPrint("جاء إشعار في الخلفية: ${message.messageId}");
-}
-
 Future<void> main() async {
-  // التأكد من تهيئة الـ Widgets
+  // 1. السطر ده لازم يكون أول واحد عشان يجهز الـ Native Bindings
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. تهيئة Firebase بشكل آمن
+  debugPrint("🚀 Starting Supabase Initialization...");
+
   try {
-    await Firebase.initializeApp();
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    // 2. تهيئة Supabase مع await ضرورية جداً
+    await Supabase.initialize(
+      url: 'https://ocbmcsnovsuirjblawsa.supabase.co',
+      anonKey: 'sb_publishable_IEWmAz99wNrpI6WXNyZYGw_ehlfvRjT',
+    );
+    debugPrint("✅ Supabase Initialized Successfully!");
   } catch (e) {
-    debugPrint("Firebase Initialization Error: $e ⚠️");
+    debugPrint("❌ Supabase Initialization Error: $e");
   }
 
-  // 2. تحميل ملف الـ .env
-  try {
-    await dotenv.load(fileName: ".env");
-  } catch (e) {
-    debugPrint("Warning: .env file not found. Make sure it exists in assets. ⚠️");
-  }
-
-  // 3. تهيئة خدمة الإشعارات (مع معالجة خطأ تكرار الطلب)
-  final notificationService = NotificationService();
-  try {
-    // نتحقق من حالة الإذن أولاً قبل البدء لتجنب الـ Exception
-    NotificationSettings settings = await FirebaseMessaging.instance.getNotificationSettings();
-    if (settings.authorizationStatus == AuthorizationStatus.notDetermined) {
-      await notificationService.init();
-    } else {
-      // إذا كان الإذن ممنوحاً بالفعل، نقوم بتشغيل المستمعات فقط دون طلب الإذن مرة أخرى
-      debugPrint("Notification permission already set.");
-    }
-  } catch (e) {
-    debugPrint("Notification Service Error: $e ⚠️");
-  }
-
-  // 4. فحص التوكن للدخول التلقائي
+  // 3. إنشاء الـ AuthProvider بعد ما نتأكد إن سوبا بيز جاهز
   final authProvider = AuthProvider();
-  await authProvider.tryAutoLogin();
+
+  // 4. محاولة تسجيل الدخول التلقائي
+  // ملاحظة: تأكد إن tryAutoLogin جوه الـ AuthProvider ما بتعملش crash
+  try {
+    await authProvider.tryAutoLogin();
+  } catch (e) {
+    debugPrint("⚠️ AutoLogin Error: $e");
+  }
 
   runApp(
     MultiProvider(
       providers: [
+        // بنستخدم .value لأننا عملنا له create فوق خلاص
         ChangeNotifierProvider.value(value: authProvider),
         ChangeNotifierProvider(create: (_) => SocketProvider()),
       ],
@@ -80,35 +60,29 @@ class MyApp extends StatelessWidget {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'Uber Gas App',
-          // استخدام الثيم الغامق
           themeMode: ThemeMode.dark,
           theme: AppTheme.darkTheme,
           darkTheme: AppTheme.darkTheme,
-          // تحديد الشاشة الرئيسية بناءً على حالة تسجيل الدخول
-          home: auth.isLoggedIn
-              ? _getHome(auth.user)
-              : const LoginScreen(),
+          // التوجيه بناءً على حالة تسجيل الدخول
+          home: auth.isLoggedIn ? _getHome(auth.user) : const LoginScreen(),
         );
       },
     );
   }
 
-  // دالة توزيع الأدوار وتحويل البيانات لموديل
   Widget _getHome(dynamic userData) {
     if (userData == null) return const LoginScreen();
-
     try {
-      // تحويل البيانات من Map إلى UserModel
-      final user = UserModel.fromJson(userData);
+      final user =
+          userData is UserModel ? userData : UserModel.fromJson(userData);
 
-      // توجيه المستخدم حسب دوره (Role)
       if (user.role == 'DRIVER' || user.role == 'PROVIDER') {
         return DashboardScreen(provider: user);
       } else {
         return CustomerHomeScreen(user: user);
       }
     } catch (e) {
-      debugPrint("Error parsing user data: $e");
+      debugPrint("🏠 Home Navigation Error: $e");
       return const LoginScreen();
     }
   }

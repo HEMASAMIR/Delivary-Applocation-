@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
-// استيراد الموديلات والبروفايدرز
-import '../../providers/auth_provider.dart';
+// استيراد الخدمة والموديل
+import '../../services/supabase_auth_service.dart';
 import '../../models/user_model.dart';
 
-// --- تم تعديل المسارات هون لتناسب وجود الملفات داخل مجلد screens ---
-import '../user/customer_home_screen.dart'; // رجوع خطوة واحدة فقط
-import '../provider/dashboard_screen.dart'; // رجوع خطوة واحدة فقط
-import 'register_screen.dart'; // نفس المجلد (auth)
+// استيراد الشاشات
+import '../user/customer_home_screen.dart';
+import '../provider/dashboard_screen.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,33 +18,39 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _phoneController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _loading = false;
+  bool _isLoading = false;
 
-  void _login() async {
-    if (_phoneController.text.isEmpty || _passwordController.text.isEmpty) {
-      Fluttertoast.showToast(msg: "يا غالي عبّي كل الحقول أول");
-      return;
-    }
+  // --- دالة تسجيل الدخول ---
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _loading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
-      final auth = Provider.of<AuthProvider>(context, listen: false);
-
-      await auth.login(
-        _phoneController.text.trim(),
+      // 1. تسجيل الدخول من خلال السيرفس
+      final response = await SupabaseAuthService.signIn(
+        _emailController.text.trim(),
         _passwordController.text.trim(),
       );
 
-      if (!mounted) return;
+      if (response.user != null) {
+        // 2. جلب بيانات البروفايل (عشان الـ Role)
+        final profileData =
+            await SupabaseAuthService.getUserProfile(response.user!.id);
 
-      if (auth.isLoggedIn && auth.user != null) {
-        final currentUser = UserModel.fromJson(auth.user!);
+        if (profileData == null) {
+          throw "لم يتم العثور على بيانات المستخدم في الجدول";
+        }
 
+        // 3. تحويل البيانات لموديل عشان نحدد الوجهة
+        final currentUser = UserModel.fromJson(profileData);
+
+        if (!mounted) return;
+
+        // 4. التوجيه المباشر حسب الـ Role
         if (currentUser.role == 'DRIVER' || currentUser.role == 'PROVIDER') {
           Navigator.pushReplacement(
             context,
@@ -53,28 +58,30 @@ class _LoginScreenState extends State<LoginScreen> {
                 builder: (_) => DashboardScreen(provider: currentUser)),
           );
         } else {
-          // التوجيه لشاشة المستخدم (الزبون)
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
                 builder: (_) => CustomerHomeScreen(user: currentUser)),
           );
         }
+
+        Fluttertoast.showToast(
+            msg: "أهلاً بك! ✅", backgroundColor: Colors.green);
       }
-    } catch (err) {
-      Fluttertoast.showToast(msg: "صار مشكلة: ${err.toString()}");
+    } catch (e) {
+      debugPrint("Login Error: $e");
+      Fluttertoast.showToast(
+        msg: "خطأ: البريد أو كلمة السر غير صحيحة",
+        backgroundColor: Colors.red,
+      );
     } finally {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   void dispose() {
-    _phoneController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -85,69 +92,72 @@ class _LoginScreenState extends State<LoginScreen> {
       appBar: AppBar(title: const Text('تسجيل الدخول'), centerTitle: true),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ClipRRect(
-                borderRadius:
-                    BorderRadius.circular(10), // لو عايز تعمل حواف ناعمة للصورة
-                child: Image.asset(
-                  'assets/logo.jpeg',
-                  width: 80,
-                  height: 80,
-                  fit: BoxFit
-                      .cover, // عشان الصورة تملا الـ 80 بكسل من غير ما تتمط
-                  errorBuilder: (context, error, stackTrace) => const Icon(
-                      Icons.local_gas_station,
-                      size: 80,
-                      color: Colors
-                          .blue), // لو الصورة محملتش يظهر الأيقونة القديمة كاحتياطي
+          padding: const EdgeInsets.all(25),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                const Icon(Icons.local_gas_station,
+                    size: 80, color: Colors.blue),
+                const SizedBox(height: 40),
+
+                // حقل البريد
+                TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'البريد الإلكتروني',
+                    prefixIcon: const Icon(Icons.email),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  validator: (val) => (val == null || !val.contains('@'))
+                      ? 'بريد غير صحيح'
+                      : null,
                 ),
-              ),
-              const SizedBox(height: 30),
-              TextField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  labelText: 'رقم الهاتف',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.phone),
+                const SizedBox(height: 20),
+
+                // حقل الباسورد
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: 'كلمة السر',
+                    prefixIcon: const Icon(Icons.lock),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  validator: (val) => (val == null || val.length < 6)
+                      ? 'كلمة السر قصيرة'
+                      : null,
                 ),
-              ),
-              const SizedBox(height: 15),
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'كلمة السر',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.lock),
-                ),
-              ),
-              const SizedBox(height: 25),
-              _loading
-                  ? const CircularProgressIndicator()
-                  : ElevatedButton(
-                      onPressed: _login,
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                const SizedBox(height: 30),
+
+                // زر الدخول
+                _isLoading
+                    ? const CircularProgressIndicator()
+                    : ElevatedButton(
+                        onPressed: _handleLogin,
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 55),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child:
+                            const Text('دخول', style: TextStyle(fontSize: 18)),
                       ),
-                      child: const Text('دخول'),
-                    ),
-              const SizedBox(height: 15),
-              TextButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                  );
-                },
-                child: const Text('ما عندك حساب؟ سجل الآن'),
-              )
-            ],
+
+                const SizedBox(height: 20),
+
+                TextButton(
+                  onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const RegisterScreen())),
+                  child: const Text('ليس لديك حساب؟ سجل الآن'),
+                )
+              ],
+            ),
           ),
         ),
       ),

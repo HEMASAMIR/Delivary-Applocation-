@@ -23,7 +23,7 @@ dependencies:
   location: ^5.0.3
   geolocator: ^13.0.1
   
-  # Firebase & Notifications (التعديل هون عشان IDX)
+  # Firebase & Notifications
   firebase_core: ^3.15.1
   firebase_messaging: ^15.2.10
   flutter_local_notifications: ^17.0.0
@@ -31,7 +31,6 @@ dependencies:
   # Storage & Utilities
   shared_preferences: ^2.3.3
   intl: ^0.18.1
-  flutter_dotenv: ^5.2.1
   url_launcher: ^6.3.1
   
   # UI Components
@@ -39,33 +38,36 @@ dependencies:
   fluttertoast: ^8.2.14
   flutter_rating_bar: ^4.0.1
   
-  # Audio
+  # Audio & Images
   audioplayers: ^6.1.0
   image_picker: ^1.0.7
+  supabase_flutter: ^2.12.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^2.0.0
-  flutter_launcher_icons: "^0.13.1"
+  # ضفنا الـ package هنا عشان هي مش موجودة في الـ dev_dependencies
+  flutter_launcher_icons: ^0.13.1
+  
 
-# إعدادات الأيقونات
+# بلوك واحد فقط للإعدادات في آخر الملف
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
-  image_path: "assets/icon.png"
+  image_path: "assets/app_icon.png"
   adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/app_icon.png"
+
 
 flutter:
   uses-material-design: true
 
-  # تعريف الملفات
   assets:
     - assets/sounds/alert.mp3
     - assets/icon.png
     - assets/logo.jpeg
 
-  # تعريف الخطوط
   fonts:
     - family: Inter
       fonts:

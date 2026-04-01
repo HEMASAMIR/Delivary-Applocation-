@@ -24,6 +24,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   GoogleMapController? _mapController;
   LatLng _currentPosition = const LatLng(31.963158, 35.930359);
   Set<Marker> markers = {};
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -50,6 +51,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   @override
   void dispose() {
     _mapController?.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -218,14 +220,60 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           ),
         ],
       ),
-      body: GoogleMap(
-        initialCameraPosition:
-            CameraPosition(target: _currentPosition, zoom: 15),
-        onMapCreated: (controller) => _mapController = controller,
-        myLocationEnabled: true,
-        myLocationButtonEnabled: false,
-        markers: markers,
-        zoomControlsEnabled: false,
+      body: Stack(
+        children: [
+          GoogleMap(
+            initialCameraPosition:
+                CameraPosition(target: _currentPosition, zoom: 15),
+            onMapCreated: (controller) => _mapController = controller,
+            myLocationEnabled: true,
+            myLocationButtonEnabled: false,
+            markers: markers,
+            zoomControlsEnabled: false,
+          ),
+
+          // Search Bar Overlaid on the Map
+          Positioned(
+            top: MediaQuery.of(context).padding.top + kToolbarHeight + 10,
+            left: 20,
+            right: 20,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'ابحث عن عناوين أو مزودين...',
+                  prefixIcon: const Icon(Icons.search, color: Colors.black54),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.clear, color: Colors.black54),
+                    onPressed: () => _searchController.clear(),
+                  ),
+                  border: InputBorder.none,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                ),
+                onSubmitted: (value) {
+                  if (value.isNotEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('جاري البحث عن: $value...')),
+                    );
+                    // Add Map search logic here later if needed
+                  }
+                },
+              ),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),

@@ -14,19 +14,56 @@ class AuthProvider extends ChangeNotifier {
   // --- محاولة تسجيل الدخول التلقائي ---
   Future<bool> tryAutoLogin() async {
     final prefs = await SharedPreferences.getInstance();
-    if (!prefs.containsKey('token')) return false;
 
-    token = prefs.getString('token');
-
-    if (prefs.containsKey('user_data')) {
-      final String? userDataString = prefs.getString('user_data');
-      if (userDataString != null) {
-        user = jsonDecode(userDataString);
-      }
+    if (!prefs.containsKey('token')) {
+      token = null;
+      user = null;
+      notifyListeners();
+      return false;
     }
 
-    notifyListeners();
-    return true;
+    final savedToken = prefs.getString('token');
+    if (savedToken == null) {
+      token = null;
+      user = null;
+      notifyListeners();
+      return false;
+    }
+
+    // ✅ تحقق من السيرفر إن التوكن لسه صالح
+    try {
+      final response = await http.get(
+        Uri.parse(ApiConfig.verifyToken),
+        headers: {
+          'Authorization': 'Bearer $savedToken',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        token = savedToken;
+        final userDataString = prefs.getString('user_data');
+        if (userDataString != null) {
+          user = jsonDecode(userDataString);
+        }
+        notifyListeners();
+        return true;
+      } else {
+        // التوكن منتهي أو مرفوض
+        token = null;
+        user = null;
+        await prefs.clear();
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      // مشكلة في النت أو السيرفر
+      token = null;
+      user = null;
+      await prefs.clear();
+      notifyListeners();
+      return false;
+    }
   }
 
   // --- تحديث الملف الشخصي ---
@@ -38,7 +75,6 @@ class AuthProvider extends ChangeNotifier {
   }) async {
     try {
       var uri = Uri.parse(ApiConfig.updateProfile);
-
       var request = http.MultipartRequest('POST', uri);
 
       request.headers.addAll({
@@ -63,12 +99,8 @@ class AuthProvider extends ChangeNotifier {
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);
 
-      print("STATUS CODE: ${response.statusCode}");
-      print("RESPONSE BODY: ${response.body}");
-
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
-
         user = responseData['user'];
 
         final prefs = await SharedPreferences.getInstance();

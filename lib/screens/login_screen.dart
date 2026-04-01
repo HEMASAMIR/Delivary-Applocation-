@@ -91,7 +91,7 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-            ClipRRect(
+              ClipRRect(
                 borderRadius:
                     BorderRadius.circular(10), // لو عايز تعمل حواف ناعمة للصورة
                 child: Image.asset(

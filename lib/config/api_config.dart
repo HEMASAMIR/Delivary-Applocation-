@@ -20,4 +20,6 @@ class ApiConfig {
 
   // --- روابط الطلبات (Orders) ---
   static const String rateOrder = "$baseUrl/orders/rate";
+  static const String verifyToken = '$baseUrl/auth/verify';
+// غير المسار ده حسب الـ endpoint الموجود عندك في السيرفر
 }

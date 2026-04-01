@@ -24,12 +24,12 @@ android {
     // الحل الأول: أبقينا فقط النسخة الأحدث وحذفنا المكرر
     ndkVersion = "27.0.12077973" 
     
-    compileSdk = 36 // نصيحة: استقر على 35 حالياً لأن 36 ما زالت تجريبية لبعض الإضافات
+    compileSdk = 36 // نصيحة: استقر على 36 حالياً بسبب الإضافات
 
     defaultConfig {
         applicationId = "com.example.myapp"
         minSdk = flutter.minSdkVersion // يفضل تحديدها بـ 21 لضمان عمل الـ Desugaring بشكل سليم
-        targetSdk = 36
+        targetSdk = 35
         versionCode = flutterVersionCode
         versionName = flutterVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

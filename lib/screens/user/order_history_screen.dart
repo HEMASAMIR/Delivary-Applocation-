@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:provider/provider.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../providers/auth_provider.dart';
+// تأكد من استيراد ملف الـ ApiConfig من مساره الصحيح في مشروعك
+import '../../config/api_config.dart';
 
 class OrderHistoryScreen extends StatefulWidget {
   const OrderHistoryScreen({super.key});
@@ -13,13 +14,22 @@ class OrderHistoryScreen extends StatefulWidget {
 }
 
 class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
+  // تعريف متغير الـ Future لضمان عدم إعادة الطلب عند عمل Rebuild للواجهة
+  late Future<List<dynamic>> _ordersFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    // استدعاء الدالة عند تشغيل الصفحة لأول مرة فقط
+    _ordersFuture = _fetchOrders();
+  }
+
   Future<List<dynamic>> _fetchOrders() async {
     final authProv = context.read<AuthProvider>();
     final String token = authProv.token ?? "";
-    final String apiUrl = "${dotenv.env['API_URL']}/user/orders";
 
     final response = await http.get(
-      Uri.parse(apiUrl),
+      Uri.parse(ApiConfig.orderHistory), // الاعتماد على الكلاس الخاص بك هنا
       headers: {
         "Content-Type": "application/json",
         "Authorization": "Bearer $token",
@@ -43,15 +53,16 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
+        centerTitle: true, // لجعل العنوان في المنتصف
       ),
       body: FutureBuilder<List<dynamic>>(
-        future: _fetchOrders(),
+        future: _ordersFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
                 child: CircularProgressIndicator(color: Colors.black));
           } else if (snapshot.hasError) {
-            return const Center(child: Text("لا توجد طلبات سابقة"));
+            return const Center(child: Text("حدث خطأ أثناء تحميل البيانات"));
           }
 
           final orders = snapshot.data ?? [];
@@ -73,7 +84,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     );
   }
 
-  Widget _buildOrderCard(Map order) {
+  Widget _buildOrderCard(Map<String, dynamic> order) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(15),
@@ -82,7 +93,6 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-              // تم التعديل هنا لإصلاح الخطأ
               color: Colors.grey.withOpacity(0.1),
               blurRadius: 10,
               spreadRadius: 2)
@@ -123,7 +133,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
             children: [
               const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
               const SizedBox(width: 5),
-              Text(order['date'] ?? "2024-05-10",
+              Text(order['date'] ?? "غير متوفر",
                   style: const TextStyle(color: Colors.grey)),
               const Spacer(),
               const Text("المجموع: ", style: TextStyle(color: Colors.grey)),
@@ -136,7 +146,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
             width: double.infinity,
             child: OutlinedButton(
               onPressed: () {
-                // دالة إعادة الطلب
+                // هنا يمكنك إضافة منطق إعادة الطلب
               },
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: Colors.black12),
